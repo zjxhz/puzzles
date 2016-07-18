@@ -14,10 +14,13 @@ import java.util.*;
  */
 public class Main {
 
-    static List<List<Assignment>> candidates = new ArrayList<>();
+    static Stack<Stack<Assignment>> candidates = new Stack<>();
     static Assignment lastAssignment = null;
     private static List<Line> lines;
     private static List<Driver> drivers;
+    private static int highestScore = Integer.MIN_VALUE;
+    private static int smallestCandidatesSize = Integer.MAX_VALUE;
+
 
     private static void plan() {
         lines = LinesFactory.createLines();
@@ -32,12 +35,12 @@ public class Main {
                         if (candidates.isEmpty()) {
                             throw new MissionImpossibleException();
                         }
-                        List<Assignment> lastCandidates;
-                        while ((lastCandidates = candidates.get(candidates.size() - 1)).isEmpty()) {
+                        Stack<Assignment> lastCandidates;
+                        while ((lastCandidates = candidates.peek()).isEmpty()) {
                             //todo check if candidates is empty
-                            candidates.remove(lastCandidates);
+                            candidates.pop();
                         }
-                        lastAssignment = lastCandidates.remove(lastCandidates.size() - 1);
+                        lastAssignment = lastCandidates.pop();
                         cancelAfter(lastAssignment);
                         lastAssignment.assign();
                         shiftIndex = lastAssignment.shift.ordinal();
@@ -46,13 +49,34 @@ public class Main {
                     } else {
                         line.assignShift(day, shift, driver);
                     }
+                    if(day == 14 && lineIndex == lines.size() -1 && shiftIndex == 1){
+                        //the end
+                        printScore();
+//                        startOver();
+                        candidates.pop();//for the top ones we only need the one that give the highest point
+                        Stack<Assignment> lastCandidates;//continue to pop for empty list until find one
+                        while ((lastCandidates = candidates.peek()).isEmpty()) {
+                            //todo check if candidates is empty
+                            candidates.pop();
+                        }
+                        if(candidates.size() < smallestCandidatesSize){
+                            smallestCandidatesSize = candidates.size();
+                            System.out.println("Redo the calc with smaller candidate size: " + candidates.size());
+                        }
 
+                        lastAssignment = lastCandidates.pop();
+                        cancelAfter(lastAssignment);
+                        lastAssignment.assign();
+                        shiftIndex = lastAssignment.shift.ordinal();
+                        lineIndex = lines.indexOf(lastAssignment.line);
+                        day = lastAssignment.day;
+                    }
                 }
 
             }
         }
-        printPlan();
-        printScore();
+//        printPlan();
+//        printScore();
     }
 
     private static void cancelAfter(Assignment assignment) {
@@ -118,7 +142,12 @@ public class Main {
         lineSet.addAll(lines);
         Set<Driver> driverSet = new HashSet<>();
         driverSet.addAll(drivers);
-        System.out.println("Total: " + scorer.evaluate(lineSet, days, driverSet));
+        int score =  scorer.evaluate(lineSet, days, driverSet);
+        if(score > highestScore){
+            highestScore = score;
+            System.out.println("Higher Score found: " + highestScore);
+            printPlan();
+        }
     }
 
 
@@ -186,19 +215,18 @@ public class Main {
             assignment.shift = shift;
             assignments.add(assignment);
         }
-        Collections.sort(assignments, evaluator);//TODO test
-        List<Assignment> validOnes = filter(assignments);
+        Collections.sort(assignments, evaluator);
+        Stack<Assignment> validOnes = filter(assignments);
         if (validOnes.isEmpty()) {
             return null;
         }
-        lastAssignment = validOnes.remove(validOnes.size() - 1);
-        candidates.add(validOnes);//todo empty collection?
-//        System.out.println(lastAssignment);
+        lastAssignment = validOnes.pop();
+        candidates.add(validOnes);
         return lastAssignment.driver;
     }
 
-    private static List<Assignment> filter(List<Assignment> assignments) {
-        List<Assignment> validOnes = new ArrayList<>();
+    private static Stack<Assignment> filter(List<Assignment> assignments) {
+        Stack<Assignment> validOnes = new Stack<>();
         for (Assignment assignment : assignments) {
             if (AssignmentEvaluator.evaluate(assignment) != AssignmentEvaluator.ILLEGAL_ASSIGNMENT_VALUE) {
                 validOnes.add(assignment);

@@ -18,7 +18,7 @@ public class TotalScorer implements Scorer{
         int sum = 0;
         for(Scorer scorer : scorers){
             int val = scorer.evaluate(lines, days, drivers);
-            System.out.println(scorer.getClass() + ": " + val);
+//            System.out.println(scorer.getClass() + ": " + val);
             sum += val;
         }
         return sum;

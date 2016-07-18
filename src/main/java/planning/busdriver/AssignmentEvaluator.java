@@ -24,7 +24,7 @@ public class AssignmentEvaluator implements Comparator<Assignment> {
         }
         if (shift == Shift.MORNING && driver.hasLateShift(day - 1)) {
             return ILLEGAL_ASSIGNMENT_VALUE;
-            //value -= 30; todo check this
+            //value -= 30; //todo is this too strict?
         }
         if (shift == Shift.LATE && getConsecutiveLateShiftBefore(day, driver) >= 3) {
 //            value -= 10 * (getConsecutiveLateShiftBefore(day, driver) - 3 + 1);

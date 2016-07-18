@@ -12,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by wayne on 7/17/16.
@@ -23,9 +24,11 @@ public class HtmlGenerator {
     List<Driver> drivers;
 
     HtmlGenerator() throws FileNotFoundException {
-        writer = new PrintWriter(new File("html/puzzle.html"));
+        String targetFolder = "build/resources/main/planning/busdriver/html";
+        new File(targetFolder).mkdirs();
+        writer = new PrintWriter(new File(targetFolder, "puzzle.html"));
         lines = LinesFactory.createLines();
-        drivers = DriversFactory.create("interviews/quintiq/shifts.txt", lines);
+        drivers = DriversFactory.create("planning/busdriver/shifts.txt", lines);
         days = DaysFactory.createDays(14);
     }
 
@@ -63,19 +66,24 @@ public class HtmlGenerator {
     private void generateDrivers(List<Driver> drivers, List<Integer> days) {
         for (int i = 0; i < drivers.size(); i++) {
             Driver driver = drivers.get(i);
+            String qualifiedLines = toSimplifiedLines(driver.getQualifiedLines());
             writer.println("<tr>");
             writer.print("<td>");
-            writer.print(driver.getId() + " " + driver.getQualifiedLines() + " " + driver.getLateShiftCount());
+            writer.print(driver.getId() + " " + qualifiedLines + " " + driver.getLateShiftCount());
             writer.print("</td>");
             for (int j = 0; j < days.size(); j++) {
                 int day = days.get(j);
-                writer.printf("<td id='%s_d%s_m' class='%s' data-driver='%s' data-day='%s'></td>" +
-                              "<td id='%s_d%s_l' class='%s' data-driver='%s' data-day='%s'></td>",
-                              driver.getId(), day, getStyleClass(driver, day, Shift.MORNING), driver.getId(), day,
-                              driver.getId(), day, getStyleClass(driver, day, Shift.LATE), driver.getId(), day);
+                writer.printf("<td id='%s_d%s_m' class='%s' data-driver='%s' data-day='%s' data-qualified='%s'></td>" +
+                              "<td id='%s_d%s_l' class='%s' data-driver='%s' data-day='%s' data-qualified='%s'></td>",
+                              driver.getId(), day, getStyleClass(driver, day, Shift.MORNING), driver.getId(), day, qualifiedLines,
+                              driver.getId(), day, getStyleClass(driver, day, Shift.LATE), driver.getId(), day, qualifiedLines);
             }
             writer.println("</tr>");
         }
+    }
+
+    private String toSimplifiedLines(Set<Line> lines) {
+        return lines.toString().replaceAll("Line ","");
     }
 
     private String getStyleClass(Driver driver, int day, Shift shift) {
@@ -113,9 +121,9 @@ public class HtmlGenerator {
             writer.print("</td>");
             for (int j = 0; j < days.size(); j++) {
                 int day = days.get(j);
-                writer.printf("<td id='l%s_d%s_m' class='%s' data-line></td><td id='l%s_d%s_l' class='%s' data-line></td>",
-                        i + 1, day, "line-" + (i + 1) + "-morning-shift",
-                        i + 1, day, "line-" + (i + 1) + "-late-shift");
+                writer.printf("<td id='l%s_d%s_m' class='%s' data-line data-line-day='%s'></td><td id='l%s_d%s_l' class='%s' data-line data-line-day='%s'></td>",
+                        i + 1, day, "line-" + (i + 1) + "-morning-shift", day,
+                        i + 1, day, "line-" + (i + 1) + "-late-shift", day);
             }
             writer.println("</tr>");
         }
