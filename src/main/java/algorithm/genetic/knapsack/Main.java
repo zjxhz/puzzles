@@ -9,12 +9,14 @@ public class Main {
     private int CHROME_LENGTH = 20;
     private int POPULATION_SIZE = 100;
     private int MAX_ROUNDS = 1000;
+    private float CROSSOVER_RATE = 0.7f;
     private int BAG_CAPACITY = 15;
     private double MUTATION_RATE = 0.001;
     private List<BitSet> population = new ArrayList<>(POPULATION_SIZE);
     private BitSet bestChrome;
-
-    private int largestValue = Integer.MIN_VALUE;
+    private double fittest = 0;
+    private int round = 0;
+//    private int largestValue = Integer.MIN_VALUE;
 
     public List<Item> items;
 
@@ -28,15 +30,13 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        BitSet bs = new BitSet();
-        bs.set(4);
-        System.out.println(bs.toByteArray()[0]);
+        new Main().pack();
     }
 
     public void pack() {
         initPopulation();
 
-        for(int i = 0; i < MAX_ROUNDS; i++){
+        for(round = 0; round < MAX_ROUNDS; round++){
             List<BitSet> newGeneration = new ArrayList<>(POPULATION_SIZE);
             int count = 0;
             while(count < POPULATION_SIZE){
@@ -50,13 +50,7 @@ public class Main {
                 newGeneration.add(offspring2);
                 count += 2;
             }
-            for(int j = 0; j < POPULATION_SIZE; j++){
-
-            }
-
-
-//            population
-
+            population = newGeneration;
         }
     }
 
@@ -69,12 +63,12 @@ public class Main {
         }
     }
 
-    private void crossover(BitSet father, BitSet mother) {
-        int start = (int) (Math.random() * CHROME_LENGTH);
+    private void crossover(BitSet offspring1, BitSet offspring2) {
+        int start = (int) (CROSSOVER_RATE * CHROME_LENGTH);
         for(int i = start; i < CHROME_LENGTH; i++){
-            boolean temp = father.get(i);
-            father.set(i, mother.get(i));
-            mother.set(i, temp);
+            boolean temp = offspring1.get(i);
+            offspring1.set(i, offspring2.get(i));
+            offspring2.set(i, temp);
         }
     }
 
@@ -87,7 +81,7 @@ public class Main {
                 return chrome;
             }
         }
-        return null;
+        return population.get(population.size() - 1);
     }
 
     private float calcTotalFitness() {
@@ -98,21 +92,20 @@ public class Main {
         return total;
     }
 
-//    private BitSet encode(Item item){
-//        BitSet bitSet = BitSet.valueOf({1});
-//        bitSet.
-//    }
-
     private float calcFitness(BitSet chrome) {
         int weight = calcWeight(chrome);
         int value = calcValue(chrome);
-//        if (weight <= 15 && value > largestValue) {
-//            System.out.println("Largest value so far: " + value + ", weight: " + weight);
-//            System.out.println("Items are: " + decode(chrome));
-//            largestValue = value;
-//        }
-        int denominator = weight <= 15 ? (16 - weight) : (weight - 10);
-        return value / denominator;
+        int denominator = weight <= 15 ? 1 : (weight - 10);
+        float fitness =  1.0f * value / denominator;
+        if (fitness > fittest) {
+            System.out.println("Fittest so far: " + fitness
+                    + ", weight: " + weight + ", value: " + value
+                    + ", round " + round);
+            System.out.println("Items are: " + decode(chrome));
+            fittest = fitness;
+            bestChrome = chrome;
+        }
+        return fitness;
     }
 
     private int calcWeight(BitSet chrome) {
@@ -131,23 +124,31 @@ public class Main {
         return value;
     }
 
-    private List<Item> decode(BitSet chrome) {
-        List<Item> items = new ArrayList<>();
-        Set<Byte> generatedIndexes = new HashSet<>();
+    private Set<Item> decode(BitSet chrome) {
+        Set<Item> items = new HashSet<>();
         for (int i = 0; i < CHROME_LENGTH; i += 4) {
             BitSet bs = chrome.get(i, i + 4);
-            byte index = bs.toByteArray()[0];
+            int index = toInteger(bs);
             Item item = decode(index);
-            if (items.contains(index) || item == null) {
-                continue;
+            if(item != null){
+                items.add(item);
             }
-            generatedIndexes.add(index);
         }
 //        removeItemsIfWeightExceeds(items); //is this needed?
         return items;
     }
 
-//    private void removeItemsIfWeightExceeds(List<Item> items) {
+    public int toInteger(BitSet bits) {
+        int value = 0;
+        for (int i = 0; i < bits.length(); ++i) {
+            int actual = i;
+            value += bits.get(i) ? (1L << actual) : 0L;
+        }
+        return value;
+    }
+
+
+//    yprivate void removeItemsIfWeightExceeds(List<Item> items) {
 //        int weight = 0;
 //        for(Item i : items){
 //            weight += i.weight;
@@ -155,7 +156,7 @@ public class Main {
 //        if(weight)
 //    }
 
-    private Item decode(byte b) {
+    private Item decode(int b) {
         if (b >= items.size()) {
             return null;
         }
@@ -192,7 +193,34 @@ class Item implements Comparable<Item> {
         return weight - o.weight;
     }
 
-//    public BitSet encode{
+    @Override
+    public String toString() {
+        return "Item{" +
+                "weight=" + weight +
+                ", value=" + value +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Item item = (Item) o;
+
+        if (weight != item.weight) return false;
+        return value == item.value;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = weight;
+        result = 31 * result + value;
+        return result;
+    }
+
+    //    public BitSet encode{
 //
 //    }
 }
