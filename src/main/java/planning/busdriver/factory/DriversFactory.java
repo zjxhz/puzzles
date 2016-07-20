@@ -56,6 +56,50 @@ public class DriversFactory {
 //        return days;
 //    }
 
+        private static Set<Integer> calcOffDays1(String id) {
+        Set<Integer> days = new HashSet<>();
+        int [][] offdays = {
+                {4,5,11,12},//shifts1, 127, 78.88%; 161, 136.85 ==> 135,67
+                {1, 7,8, 14},
+                {1, 6,8,13},
+                {3,5,10,12},//D
+                {2,4,9,11},
+                {3, 7, 10,14},
+                {1,5,8,12},//G
+                {6,7,13,14},
+                {2,7,9,14},
+                {3,5,10,12},
+                {4, 6, 11, 13},//K
+        };
+        int index = id.charAt(0) - 'A';
+        for(int i : offdays[index]){
+            days.add(i);
+        }
+        return days;
+    }
+
+    private static Set<Integer> calcOffDays0(String id) {
+        Set<Integer> days = new HashSet<>();
+        int [][] offdays = {
+                {6, 7, 13, 14},//shift0; 160, 63%; 250, 212
+                {2, 3, 9, 10},
+                {1, 3, 8,10},
+                {5,7, 12, 14},
+                {4, 6, 11, 13},
+                {2, 5, 9, 12},
+                {3,7,10, 14},
+                {1,2, 8,9},
+                {2, 4, 9, 11},
+                {5, 7, 12, 14},
+                {1, 6, 8, 13},
+        };
+        int index = id.charAt(0) - 'A';
+        for(int i : offdays[index]){
+            days.add(i);
+        }
+        return days;
+    }
+
     private static Set<Integer> calcOffDays(String id) {
         Set<Integer> days = new HashSet<>();
         int base = id.charAt(0) - 'A' + 3;
@@ -73,7 +117,7 @@ public class DriversFactory {
             Scanner in = new Scanner(ClassLoader.getSystemResourceAsStream(resourceName));
             while (in.hasNext()) {
                 String id = in.nextLine();
-                Set<Integer> offDays = calcOffDays(id);
+                Set<Integer> offDays = calcOffDays1(id);
                 Set<Line> qualifiedLines = scanLines(lines, in.nextLine());
                 Set<Integer> preferredOffDays = scanPrefferedOffDays(in.nextLine());
                 Map<Integer, Shift> preferredShifts = scanPreferredShifts(in.nextLine());
