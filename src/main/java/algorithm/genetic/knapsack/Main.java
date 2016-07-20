@@ -6,27 +6,36 @@ import java.util.*;
  * Created by huanze on 7/19/2016.
  */
 public class Main {
-    private int CHROME_LENGTH = 20;
+    private int CHROME_LENGTH = 200;//20;
+    private int GENE_LENGTH = 5;//todo this should be rather calculated
     private int POPULATION_SIZE = 100;
     private int MAX_ROUNDS = 1000;
     private float CROSSOVER_RATE = 0.7f;
-    private int BAG_CAPACITY = 15;
+    private int bagCapacity;
+    private int optimalResult;
     private double MUTATION_RATE = 0.001;
     private List<BitSet> population = new ArrayList<>(POPULATION_SIZE);
-    private BitSet bestChrome;
     private double fittest = 0;
     private int round = 0;
-//    private int largestValue = Integer.MIN_VALUE;
 
     public List<Item> items;
 
     public Main() {
-        items = new ArrayList<>();
-        items.add(new Item(12, 4));
-        items.add(new Item(1, 2));
-        items.add(new Item(4, 10));
-        items.add(new Item(1, 1));
-        items.add(new Item(2, 2));
+        initTestData("algorithm/genetic/knapsack/testcase1.txt");
+    }
+
+    private void initTestData(String resource) {
+        //line 1: capacity optimal; rest lines: weight value for each item
+        Scanner in = new Scanner(ClassLoader.getSystemResourceAsStream(resource));
+        bagCapacity = in.nextInt();
+        optimalResult = in.nextInt();
+        System.out.printf("Capacity: %s, Optimal: %s \n", bagCapacity, optimalResult);
+        items = new ArrayList<>(bagCapacity);
+        while(in.hasNextInt()){
+            int weight = in.nextInt();
+            int value = in.nextInt();
+            items.add(new Item(weight, value));
+        }
     }
 
     public static void main(String[] args) {
@@ -39,8 +48,9 @@ public class Main {
         for(round = 0; round < MAX_ROUNDS; round++){
             List<BitSet> newGeneration = new ArrayList<>(POPULATION_SIZE);
             int count = 0;
+            float totalFitness = calcTotalFitness();
             while(count < POPULATION_SIZE){
-                float totalFitness = calcTotalFitness();
+//                float totalFitness = calcTotalFitness();
                 BitSet offspring1 = select(totalFitness);
                 BitSet offspring2 = select(totalFitness);
                 crossover(offspring1, offspring2);
@@ -95,7 +105,7 @@ public class Main {
     private float calcFitness(BitSet chrome) {
         int weight = calcWeight(chrome);
         int value = calcValue(chrome);
-        int denominator = weight <= 15 ? 1 : (weight - 10);
+        int denominator = weight <= bagCapacity ? 1 : (weight - 10);
         float fitness =  1.0f * value / denominator;
         if (fitness > fittest) {
             System.out.println("Fittest so far: " + fitness
@@ -103,7 +113,6 @@ public class Main {
                     + ", round " + round);
             System.out.println("Items are: " + decode(chrome));
             fittest = fitness;
-            bestChrome = chrome;
         }
         return fitness;
     }
@@ -126,16 +135,32 @@ public class Main {
 
     private Set<Item> decode(BitSet chrome) {
         Set<Item> items = new HashSet<>();
-        for (int i = 0; i < CHROME_LENGTH; i += 4) {
-            BitSet bs = chrome.get(i, i + 4);
+        for (int i = 0; i < CHROME_LENGTH; i += GENE_LENGTH) {
+            BitSet bs = chrome.get(i, i + GENE_LENGTH);
             int index = toInteger(bs);
             Item item = decode(index);
             if(item != null){
                 items.add(item);
             }
         }
-//        removeItemsIfWeightExceeds(items); //is this needed?
+//        return removeItemsIfWeightExceeds(items); //is this needed?
         return items;
+    }
+
+    private Set<Item> removeItemsIfWeightExceeds(Set<Item> items) {
+        Set<Item> result = new HashSet<>();
+        int weight = 0;
+        for(Item item : items){
+            if(item.weight + weight > bagCapacity){
+                break;
+            }
+            else{
+                weight += item.weight;
+                result.add(item);
+            }
+        }
+        return result;
+
     }
 
     public int toInteger(BitSet bits) {
@@ -219,8 +244,4 @@ class Item implements Comparable<Item> {
         result = 31 * result + value;
         return result;
     }
-
-    //    public BitSet encode{
-//
-//    }
 }
