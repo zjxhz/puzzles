@@ -4,7 +4,6 @@ import planning.busdriver.Driver;
 import planning.busdriver.Line;
 import planning.busdriver.Shift;
 
-import java.io.File;
 import java.util.*;
 
 /**
@@ -36,18 +35,18 @@ public class DriversFactory {
 //                {2,7,9,14},
 //                {3,5,10,12},
 //                {4, 6, 11, 13},//K
-////                {},
-////                {},
-////                {},
-////                {},
-////                {},
-////                {},
-////                {},
-////                {},
-////                {},
-////                {},
-////                {},//K
-//
+//                {},
+//                {},
+//                {},
+//                {},
+//                {},
+//                {},
+//                {},
+//                {},
+//                {},
+//                {},
+//                {},//K
+
 //        };
 //        int index = id.charAt(0) - 'A';
 //        for(int i : offdays[index]){
@@ -55,6 +54,28 @@ public class DriversFactory {
 //        }
 //        return days;
 //    }
+
+    private static Set<Integer> calcOffDaysG(String id) {
+        Set<Integer> days = new HashSet<>();
+        int [][] offdays = { //86.79%(138), 85%(135.15), 159(Max);
+                {3,4,10,11},
+                {6,7,13,14},
+                {5,7,12,14},
+                {2,4,9,11},
+                {1,3,8,10},//E
+                {2,6,9,13},//F
+                {4,7,11,14},//G
+                {5,6,12,13},
+                {1,6,8,13},
+                {2,4,9,11},
+                {3,5,10,12}
+        };
+        int index = id.charAt(0) - 'A';
+        for(int i : offdays[index]){
+            days.add(i);
+        }
+        return days;
+    }
 
         private static Set<Integer> calcOffDays1(String id) {
         Set<Integer> days = new HashSet<>();

@@ -28,7 +28,7 @@ public class HtmlGenerator {
         new File(targetFolder).mkdirs();
         writer = new PrintWriter(new File(targetFolder, "puzzle.html"));
         lines = LinesFactory.createLines();
-        drivers = DriversFactory.create("planning/busdriver/shifts.txt", lines);
+        drivers = DriversFactory.create("planning/busdriver/shifts1.txt", lines);
         days = DaysFactory.createDays(14);
     }
 

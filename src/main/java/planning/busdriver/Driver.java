@@ -15,6 +15,7 @@ public class Driver implements Comparable<Driver> {
     private Set<Line> qualifiedLines = new HashSet<>();
     private Set<Integer> offDays = new HashSet<>();
     private Map<Integer, Shift> preferredShifts;
+    private Set<Integer> preferredOffDays = new HashSet<>();
 
     public Set<Integer> getPreferredOffDays() {
         return preferredOffDays;
@@ -23,8 +24,6 @@ public class Driver implements Comparable<Driver> {
     public void setPreferredOffDays(Set<Integer> preferredOffDays) {
         this.preferredOffDays = preferredOffDays;
     }
-
-    private Set<Integer> preferredOffDays = new HashSet<>();
 
     public Driver(String id) {
         this(id, new HashSet<Line>());
@@ -170,5 +169,33 @@ public class Driver implements Comparable<Driver> {
 
     public Map<Integer, Shift> getPreferredShifts() {
         return preferredShifts;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Driver driver = (Driver) o;
+
+        return id != null ? id.equals(driver.id) : driver.id == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
+    /**
+     * Duplicates a driver without assigning any shifts
+     *
+     * @return A duplicated driver without any shifts assigned
+     */
+    public Driver duplicate() {
+        Driver driver = new Driver(id, qualifiedLines, offDays);
+        driver.preferredOffDays = preferredOffDays;
+        driver.preferredShifts = preferredShifts;
+        return driver;
     }
 }

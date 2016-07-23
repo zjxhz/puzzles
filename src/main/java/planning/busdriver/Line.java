@@ -3,6 +3,7 @@ package planning.busdriver;
 import planning.busdriver.exception.TooManyShiftsADayException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -90,5 +91,21 @@ public class Line {
 
     public Driver getShift(int day, Shift shift) {
         return shift == Shift.MORNING ? getMorningShift(day) : getLateShift(day);
+    }
+
+    public Line duplicate(List<Driver> drivers){
+        Line line = new Line(number);
+        for(int day : morningShifts.keySet()){
+            Driver oldDriver = morningShifts.get(day);
+            Driver newDriver = drivers.get(drivers.indexOf(oldDriver));
+            line.assignMorningShift(day, newDriver);
+        }
+        for(int day : lateShifts.keySet()){
+            Driver oldDriver = lateShifts.get(day);
+            Driver newDriver = drivers.get(drivers.indexOf(oldDriver));
+            line.assignLateShift(day, newDriver);
+        }
+        return line;
+
     }
 }

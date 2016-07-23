@@ -1,44 +1,47 @@
 package planning.busdriver;
 
-import planning.busdriver.exception.AssignmentException;
 import planning.busdriver.exception.MissionImpossibleException;
 import planning.busdriver.factory.DriversFactory;
 import planning.busdriver.factory.LinesFactory;
 import planning.busdriver.scorer.*;
 
-import java.io.FileNotFoundException;
 import java.util.*;
 
-/**
- * Created by huanze on 7/15/2016.
- */
 public class Main {
 
-    static Stack<Stack<Assignment>> candidates = new Stack<>();
-    static Assignment lastAssignment = null;
+    private static Stack<Stack<Assignment>> candidates = new Stack<>();
+    private static Assignment lastAssignment = null;
     private static List<Line> lines;
     private static List<Driver> drivers;
+    private static List<Line> storedLines;
+    private static List<Driver> storedDrivers;
     private static int highestScore = Integer.MIN_VALUE;
-    private static int smallestCandidatesSize = Integer.MAX_VALUE;
-    private  static TotalScorer scorer;
+    private static int highestScorePerPlan;
+    private static TotalScorer scorer;
+    private static int MAX_REPLAN_ATTEMPTS = 30;
+    private static int MAX_PLAN_STEPS = 2000000;
+    private static int MAX_REPLAN_STEPS = 500000;
+    private static int REPLAN_MAX_GAP = 4;
 
     private static void plan() {
+        int totalAttempts = 0;
+        highestScorePerPlan = Integer.MIN_VALUE;
         for (int day = 1; day <= 14; day++) {
             for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
                 for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {
+                    if(++totalAttempts > MAX_PLAN_STEPS){
+                        System.out.println("Too many attempts before getting a possible solution, try another one...");
+                        return;
+                    };
+
                     Line line = lines.get(lineIndex);
                     Shift shift = Shift.values()[shiftIndex];
                     Driver driver;
                     if ((driver = selectRandomDriver(line, day, shift, drivers)) == null) {
-                        if (candidates.isEmpty()) {
+                        lastAssignment = findLastAssignment();
+                        if (lastAssignment == null) {
                             throw new MissionImpossibleException();
                         }
-                        Stack<Assignment> lastCandidates;
-                        while ((lastCandidates = candidates.peek()).isEmpty()) {
-                            //todo check if candidates is empty
-                            candidates.pop();
-                        }
-                        lastAssignment = lastCandidates.pop();
                         cancelAfter(lastAssignment, 14);
                         lastAssignment.assign();
                         shiftIndex = lastAssignment.shift.ordinal();
@@ -49,81 +52,51 @@ public class Main {
                     }
                     if (day == 14 && lineIndex == lines.size() - 1 && shiftIndex == 1) {
                         printScore();
-
-                        while(true) {
+                        int replanAttempts = 0;
+                        while (true) {
                             int from = (int) (14 * Math.random());//1 - 13
-                            int to = from + 2;//from + 1 + (int) (Math.random() * 4); // gap is 1-4
+                            int to = from + 1 + (int) (Math.random() * REPLAN_MAX_GAP); // gap is 1-4
                             to = to > 14 ? 14 : to;
-//                            int to = day + 4 > 14 ? 14 : day + 4;
-                            System.out.printf("replanning from Day %s to Day %s \n", from, to);
-                            try {
-                                while (true) {
-                                    boolean tryAgain = replan(from, to);
-                                    if (!tryAgain) {
-                                        break;
-                                    }
-                                }
-                            }catch(MissionImpossibleException e){
-                                continue;
+//                            System.out.printf("%s->%s ", from, to);
+//                            if(replanAttempts % 10 == 0){
+//                                System.out.println("Replan attempts: " + replanAttempts);
+//                            }
+                            replan(from, to);
+                            if(replanAttempts++ > MAX_REPLAN_ATTEMPTS){
+                                System.out.println("Highest Score this round: " + highestScorePerPlan);
+                                return;
                             }
-                            printScore();
+
                         }
-
-//                            day = to + 1 > 14 ? 1 : to + 1;
-
-                        //the end
-
-//                        startOver();
-//                        System.out.printf("Popping %d items \n", (candidates.size() - 3));
-//                        for (int k = 0; k < candidates.size() - 3; k++){
-//                            candidates.pop();//let's try more aggressive pop
-//                        }
-//                        Stack<Assignment> lastCandidates;//continue to pop for empty list until find one
-//                        while ((lastCandidates = candidates.peek()).isEmpty()) {
-//                            //todo check if candidates is empty
-//                            candidates.pop();
-//                        }
-//                        if(candidates.size() < smallestCandidatesSize){
-//                            smallestCandidatesSize = candidates.size();
-//                            System.out.println("Redo the calc with smaller candidate size: " + candidates.size());
-//                        }
-//
-//                        lastAssignment = lastCandidates.pop();
-//                        cancelAfter(lastAssignment);
-//                        lastAssignment.assign();
-//                        shiftIndex = lastAssignment.shift.ordinal();
-//                        lineIndex = lines.indexOf(lastAssignment.line);
-//                        day = lastAssignment.day;
                     }
-                }
 
+                }
             }
         }
     }
 
-    private static boolean replan(int from, int to) {
-//        if(to > 14){
-//            to = 14;
-//            replan(1, to % 14);
-//        }
+
+    private static void replan(int from, int to) {
         candidates = new Stack<>();
+        duplicateLinesAndDrivers();
         cancelAfter(from, to);
+        int totalAttempts = 0;
         for (int day = from; day <= to; day++) {
             for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
                 for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {
+                    if(++totalAttempts > MAX_REPLAN_STEPS){
+                        System.out.println("Too many REPLAN attempts before getting a possible solution, try another one...");
+                        return;
+                    };
                     Line line = lines.get(lineIndex);
                     Shift shift = Shift.values()[shiftIndex];
                     Driver driver;
-                    if ((driver = selectRandomDriver(line, day, shift, drivers)) == null) {
-                        Stack<Assignment> lastCandidates;
-                        while ((lastCandidates = candidates.peek()).isEmpty()) {
-                            //todo check if candidates is empty
-                            candidates.pop();
-                            if(candidates.isEmpty()){
-                                throw new MissionImpossibleException();
-                            }
+                    if ((driver = selectBestDriver(line, day, shift, drivers)) == null) {
+                        lastAssignment = findLastAssignment();
+                        if (lastAssignment == null) {
+                            restoreLinesAndDrivers();
+                            return;
                         }
-                        lastAssignment = lastCandidates.pop();
                         cancelAfter(lastAssignment, to);
                         lastAssignment.assign();
                         shiftIndex = lastAssignment.shift.ordinal();
@@ -132,11 +105,39 @@ public class Main {
                     } else {
                         line.assignShift(day, shift, driver);
                     }
+                    if (day == to && lineIndex == lines.size() - 1 && shiftIndex == 1) {
+                        printScore();
+                        candidates.pop();
+                        lastAssignment = findLastAssignment();
+                        if (lastAssignment == null) {
+                            restoreLinesAndDrivers();
+                            return;
+                        }
+                        cancelAfter(lastAssignment, to);
+                        lastAssignment.assign();
+                        shiftIndex = lastAssignment.shift.ordinal();
+                        lineIndex = lines.indexOf(lastAssignment.line);
+                        day = lastAssignment.day;
+                    }
                 }
             }
+
         }
-        int score = getScore();
-        return highestScore > score;
+        assert false;
+    }
+
+    private static void restoreLinesAndDrivers() {
+        lines = storedLines;
+        drivers = storedDrivers;
+    }
+
+    private static Assignment findLastAssignment() {
+        Stack<Assignment> lastCandidates = null;
+        while (!candidates.isEmpty() && (lastCandidates = candidates.pop()).isEmpty()) ;
+        if (lastCandidates != null && !lastCandidates.isEmpty()) {
+            return lastCandidates.pop();
+        }
+        return null;
     }
 
     private static void cancelAfter(int fromDay, int toDay) {
@@ -199,11 +200,25 @@ public class Main {
 
     private static void printScore() {
         int score = getScore();
-        if (score > highestScore)
-        {
+        if (score > highestScore) {
+            duplicateLinesAndDrivers();
             highestScore = score;
             System.out.println("Higher Score found: " + highestScore);
             printPlan();
+        }
+        if(score > highestScorePerPlan){
+            highestScorePerPlan = score;
+        }
+    }
+
+    private static void duplicateLinesAndDrivers() {
+        storedLines = new ArrayList<>();
+        storedDrivers = new ArrayList<>();
+        for(Driver driver : drivers){
+            storedDrivers.add(driver.duplicate());
+        }
+        for(Line line : lines){
+            storedLines.add(line.duplicate(storedDrivers));
         }
     }
 
@@ -217,13 +232,12 @@ public class Main {
     }
 
 
-    public static void main(String[] args) throws FileNotFoundException {
-        try {
+    public static void main(String[] args) {
+        int planRound = 0;
+        while (true){
+            System.out.println("planRound: " + planRound++);
             init();
             plan();
-        } catch (AssignmentException ex) {
-            System.err.println("Error in assignment: " + ex.getClass());
-            printPlan();
         }
     }
 
@@ -238,30 +252,9 @@ public class Main {
         scorer.addScorer(new EarlyAfterLateShiftsScorer());
         scorer.addScorer(new ConsecutiveLateShiftScorer());
         scorer.addScorer(new DeviatedTargetLateShiftsScorer());
-    }
+        candidates.clear();
 
-//    private static Assignment nextAssignment(Assignment current) {
-//        Assignment assignment = new Assignment();
-//        if (current.shift == Shift.MORNING) {//same day, same line
-//            assignment.shift = Shift.LATE;
-//            assignment.day = current.day;
-//            assignment.line = current.line;
-//        } else {
-//            assignment.shift = Shift.MORNING;
-//            int lineIndex = lines.indexOf(current.line);
-//            if (lineIndex < lines.size() - 1) { // same day, next line
-//                assignment.line = lines.get(lineIndex + 1);
-//                assignment.day = current.day;
-//            } else { //next day, first line
-//                assignment.line = lines.get(0);
-//                assignment.day = current.day + 1;
-//                if (assignment.day > 14) { //running out
-//                    return null;
-//                }
-//            }
-//        }
-//        return assignment;
-//    }
+    }
 
     private static void printPlan() {
         System.out.printf("%-8s", " ");//-8 to align
@@ -287,7 +280,7 @@ public class Main {
         if (validOnes.isEmpty()) {
             return null;
         }
-        lastAssignment = validOnes.remove(new Random().nextInt(validOnes.size() ));
+        lastAssignment = validOnes.remove(new Random().nextInt(validOnes.size()));
         candidates.add(validOnes);
         return lastAssignment.driver;
     }
