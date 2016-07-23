@@ -10,6 +10,27 @@ import java.util.*;
  * Created by wayne on 7/17/16.
  */
 public class DriversFactory {
+    public static List<Driver> create(String resourceName, List<Line> lines){
+        List<Driver> drivers = new ArrayList<>();
+        try {
+            Scanner in = new Scanner(ClassLoader.getSystemResourceAsStream(resourceName));
+            while (in.hasNext()) {
+                String id = in.nextLine();
+                Set<Integer> offDays = calcOffDays1(id);//change input of this line
+                Set<Line> qualifiedLines = scanLines(lines, in.nextLine());
+                Set<Integer> preferredOffDays = scanPrefferedOffDays(in.nextLine());
+                Map<Integer, Shift> preferredShifts = scanPreferredShifts(in.nextLine());
+                Driver driver = new Driver(id, qualifiedLines, offDays);
+                driver.setPreferredOffDays(preferredOffDays);
+                driver.setPreferredShifts(preferredShifts);
+                drivers.add(driver);
+            }
+            return drivers;
+        } catch (Exception ex) {
+            throw new RuntimeException("Error occured when initializing drivers");
+        }
+    }
+
 //    private static Set<Integer> calcOffDays(String id) {
 //        Set<Integer> days = new HashSet<>();
 //        int [][] offdays = {
@@ -130,27 +151,6 @@ public class DriversFactory {
         days.add(base2 > 14 ? base2 - 14 : base2);
         days.add(base2 + 1 > 14 ? base2 + 1 - 14 : base2 + 1);
         return days;
-    }
-
-    public static List<Driver> create(String resourceName, List<Line> lines){
-        List<Driver> drivers = new ArrayList<>();
-        try {
-            Scanner in = new Scanner(ClassLoader.getSystemResourceAsStream(resourceName));
-            while (in.hasNext()) {
-                String id = in.nextLine();
-                Set<Integer> offDays = calcOffDays1(id);
-                Set<Line> qualifiedLines = scanLines(lines, in.nextLine());
-                Set<Integer> preferredOffDays = scanPrefferedOffDays(in.nextLine());
-                Map<Integer, Shift> preferredShifts = scanPreferredShifts(in.nextLine());
-                Driver driver = new Driver(id, qualifiedLines, offDays);
-                driver.setPreferredOffDays(preferredOffDays);
-                driver.setPreferredShifts(preferredShifts);
-                drivers.add(driver);
-            }
-            return drivers;
-        } catch (Exception ex) {
-            throw new RuntimeException("Error occured when initializing drivers");
-        }
     }
 
     private static Set<Line> scanLines(List<Line> lines, String line) {
