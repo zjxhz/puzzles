@@ -24,6 +24,10 @@ document.addEventListener('click', function(event){
             }
 	    }
         if(!hasShift(clickedElement)){
+            if(!canMoveTo(clickedElement)){
+                alert("You can't move it here, check whether it is the correct line and shift");
+                return;
+            }
             move(selected, clickedElement);
         }
 	} else {
@@ -38,8 +42,17 @@ document.addEventListener('click', function(event){
 	countAll();
 });
 
+//function canMoveBackToLine(element){
+//    return (isMorningShift(element) && isMorningShift(selected))
+//           || (!isMorningShift(element) && !isMorningShift(selected));
+//}
+
 function isDriverCell(element){
     return element.getAttribute("data-driver");
+}
+
+function isLineCell(element){
+    return element.getAttribute("data-line") != null;
 }
 
 
@@ -55,26 +68,93 @@ function select(element){
 }
 
 function highlightQualifiedDrivers(element){
-    var day = element.getAttribute("data-line-day");
-    var line = element.id.substring(1,2);
-    if(isDriverCell(element)){
-        day = element.getAttribute("data-day");
-        line = findShiftClass(element).substring(5,6);
-    }
+//    var day = element.getAttribute("data-line-day");
+//    var line = element.id.substring(1,2);
+//    if(isDriverCell(element)){
+//        day = element.getAttribute("data-day");
+//        line = findShiftClass(element).substring(5,6);
+//    }
+//
+//    var morning = isMorningShift(element);
+//    var sameDayCells = document.querySelectorAll("[data-day='" + day + "']");
+//    sameDayCells.forEach(function(cell){
+//        if(isQualified(cell, line, morning) && !isOffDay(cell)){
+//            addClass(cell, "qualified");
+//        } else {
+//            removeClass(cell, "qualified");
+//        }
+//    })
 
-    var morning = isMorningShift(element);
-    var sameDayCells = document.querySelectorAll("[data-day='" + day + "']");
-    sameDayCells.forEach(function(cell){
-        if(isQualified(cell, line, morning) && !isOffDay(cell)){
+//    var sameDayDriverCells = document.querySelectorAll("[data-driver]");
+//    var sameDayLineCells = document.querySelectorAll("[data-line]");
+    getDriverCells().forEach(function(cell){
+        if(canMoveTo(cell)){
+            addClass(cell, "qualified");
+        } else {
+            removeClass(cell, "qualified");
+        }
+    });
+    getLineCells().forEach(function(cell){
+        if(canMoveTo(cell)){
             addClass(cell, "qualified");
         } else {
             removeClass(cell, "qualified");
         }
     })
+
+}
+
+function canMoveTo(element){
+    if(!selected || selected == element){
+        return false;
+    }
+    var selectedDay = getSelectedDay();
+    var selectedLine = getSelectedLine();
+    var morning = isMorningShift(selected);
+    if(isDriverCell(element)){
+        var day = element.getAttribute("data-day");
+        return element && day == selectedDay && isQualified(element, selectedLine, morning) && !isOffDay(element);
+    } else if(isLineCell(element)){
+        var line = getLine(element);
+        return getLine(element) == selectedLine &&
+                element.getAttribute("data-line-day") == selectedDay &&
+                    isSameShift(morning, element);
+    }
+
+}
+
+
+
+function isSameShift(isMorning, element){
+    return (isMorning && isMorningShift(element)) || (!isMorning && !isMorningShift(element));
+}
+
+function getSelectedDay(){
+    var selectedDay = selected.getAttribute("data-line-day");
+    if(isDriverCell(selected)){
+        selectedDay = selected.getAttribute("data-day");
+    }
+    return selectedDay;
+}
+
+function getSelectedLine(){
+    return getLine(selected);
+}
+
+function getLine(element){
+    var line = element.id.substring(1,2);
+    if(isDriverCell(element)){
+        line = findShiftClass(element).substring(5,6);
+    }
+    return line;
 }
 
 function unhighlightAll(){
     getDriverCells().forEach(function(cell){
+        removeClass(cell, "qualified");
+    });
+
+    getLineCells().forEach(function(cell){
         removeClass(cell, "qualified");
     });
 }
@@ -149,7 +229,7 @@ function addClass(element, className){
 }
 
 function hasClass(element, className){
-	return element.className && element.className.indexOf(className) != -1;
+	return element && element.className && element.className.indexOf(className) != -1;
 }
 
 function countShiftPreferences(){
