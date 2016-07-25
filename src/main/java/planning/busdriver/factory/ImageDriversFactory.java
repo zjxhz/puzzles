@@ -8,50 +8,43 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 
 /**
  * Created by wayne on 7/24/16.
  */
 public class ImageDriversFactory {
-    private static int START_X = 413;
-    private static int START_Y = 250;
     private static int DAY_WIDTH = 66;
     private static int SHIFT_WIDTH = DAY_WIDTH / 2;
     private static int DAY_HEIGHT = 37;
-    private static int LINE_START_X = 328;
-    private static int LINE2_START_X = 352;
-    private static int LINE_START_Y = 270;
 
-    public static List<Driver> create(String resource, List<Line> lines) {
+
+    private static RGB LINE1_COLOR = new RGB(164, 190, 60);
+    private static RGB LINE2_COLOR = new RGB(58, 180, 74);
+    private static RGB LINE3_COLOR = new RGB(15, 108, 58);
+
+    private static RGB OFF_DAY_COLOR = new RGB(35, 35, 35);//DARK SIDE
+    private static RGB PREFERRED_OFF_DAY_COLOR = new RGB(166, 166, 166);//DARK SIDE
+    private static RGB PREFERRED_SHIFT_COLOR = new RGB(255, 255, 105);
+
+    public static List<Driver> create(ImageProperties properties, List<Line> lines) {
         List<Driver> drivers = new ArrayList<>();
         BufferedImage image = null;
         try {
-
-            image = ImageIO.read(ClassLoader.getSystemResourceAsStream(resource));
+            image = ImageIO.read(ClassLoader.getSystemResourceAsStream(properties.resourceUri));
             System.out.println("Qualified lines:");
-            for (int y = 0; y < 11; y++) {
-                RGB rgb = getRGB(image, LINE_START_X, LINE_START_Y + DAY_HEIGHT * y);
-                RGB rgb2 = getRGB(image, LINE2_START_X, LINE_START_Y + DAY_HEIGHT * y);
-
-                System.out.printf("%c: %s %d \n",
-                        ('A' + y), rgb, getLineNumber(rgb));
-                System.out.printf("%c: %s %d \n",
-                        ('A' + y), rgb2, getLineNumber(rgb2));
-            }
-
-
             for (int y = 0; y < 11; y++) {
                 Set<Line> qualifiedLines = new HashSet<>();
                 Set<Integer> offDays = new HashSet<>();
                 Set<Integer> preferredOffDays = new HashSet<>();
                 Map<Integer, Shift> preferredShifts = new HashMap<>();
                 for (int x = 0; x < 14; x++) {
-                    int actualX = START_X + DAY_WIDTH * x;
-                    int actualY = START_Y + DAY_HEIGHT * y;
+                    int actualX = properties.driverStartX + DAY_WIDTH * x;
+                    int actualY = properties.driverStartY + DAY_HEIGHT * y;
                     RGB rgb = getRGB(image, actualX, actualY);
                     int day = x + 1;
                     Shift shift = Shift.MORNING;
-                    printColor(image, x, y, actualX, actualY);
+//                    printColor(image, x, y, actualX, actualY);
                     if (isOffDay(rgb)) {
                         offDays.add(day);
                     } else if (isPreferredOffDay(rgb)) {
@@ -66,16 +59,16 @@ public class ImageDriversFactory {
                         if (isPreferredShift(rgb)) {
                             preferredShifts.put(day, shift);
                         }
-                        printColor(image, x, y, actualX, actualY);
+//                        printColor(image, x, y, actualX, actualY);
                     }
                 }
-                Line line1 = getLine(lines, image, LINE_START_X, LINE_START_Y + DAY_HEIGHT * y);
-                Line line2 = getLine(lines, image, LINE2_START_X, LINE_START_Y + DAY_HEIGHT * y);
+                Line line1 = getLine(lines, image, properties.line1X, properties.line1Y + DAY_HEIGHT * y);
+                Line line2 = getLine(lines, image, properties.line2X, properties.line1Y + DAY_HEIGHT * y);
                 qualifiedLines.add(line1);
-                if(line2 != null){
+                if (line2 != null) {
                     qualifiedLines.add(line2);
                 }
-                Driver driver = new Driver(String.valueOf((char)('A' + y)), qualifiedLines, offDays);
+                Driver driver = new Driver(String.valueOf((char) ('A' + y)), qualifiedLines, offDays);
                 driver.setPreferredOffDays(preferredOffDays);
                 driver.setPreferredShifts(preferredShifts);
                 drivers.add(driver);
@@ -86,15 +79,12 @@ public class ImageDriversFactory {
         } finally {
             //close resource?
         }
-        for(Driver driver : drivers){
-            System.out.println(driver);
-        }
         return drivers;
     }
 
     private static Line getLine(List<Line> lines, BufferedImage image, int x, int y) {
         RGB rgb = getRGB(image, x, y);
-`        int lineNumber = getLineNumber(rgb);
+        int lineNumber = getLineNumber(rgb);
         return findLine(lines, lineNumber);
     }
 
@@ -107,15 +97,19 @@ public class ImageDriversFactory {
     }
 
     private static boolean isPreferredShift(RGB rgb) {
-        return rgb.sum() < 650; //255, 255, 102-114
+        return isSameColor(PREFERRED_SHIFT_COLOR, rgb);
     }
 
     private static boolean isPreferredOffDay(RGB rgb) {
-        return rgb.sum() < 600; //165-190 * 3
+        return isSameColor(PREFERRED_OFF_DAY_COLOR, rgb);
     }
 
     private static boolean isOffDay(RGB rgb) {
-        return rgb.sum() < 330; //42-102 * 3
+        return isSameColor(OFF_DAY_COLOR, rgb);
+    }
+
+    private static boolean isSameColor(RGB rgb1, RGB rgb2) {
+        return rgb1.diff(rgb2) < 60;
     }
 
     private static void printColor(BufferedImage image, int x, int y, int actualX, int actualY) {
@@ -143,30 +137,58 @@ public class ImageDriversFactory {
     }
 
     private static int getLineNumber(RGB rgb) {
-        if (rgb.sum() < 400) {
-            return 3;
+        if (isSameColor(LINE1_COLOR, rgb)) {
+            return 1;
         }
-        if (rgb.sum() < 400) {
+        if (isSameColor(LINE2_COLOR, rgb)) {
             return 2;
         }
-        if (rgb.sum() < 600) {
-            return 1;
+        if (isSameColor(LINE3_COLOR, rgb)) {
+            return 3;
         }
         return -1;
     }
 
-    private static Line findLine(List<Line> lines, int lineNumber){
+    private static Line findLine(List<Line> lines, int lineNumber) {
         Line temp = new Line(String.valueOf(lineNumber));
-        for(Line line : lines){
-            if(temp.equals(line)){
+        for (Line line : lines) {
+            if (temp.equals(line)) {
                 return line;
             }
         }
         return null;
     }
 
+    public static class ImageProperties {
+        private String resourceUri;
+        private int driverStartX;
+        private int driverStartY;
+        private int line1X;
+        private int line1Y;
+        private int line2X;
+
+        int optimal;
+
+        public ImageProperties(String resourceUri, int driverStartX, int driverStartY,
+                               int line1X, int qualifiedLine1Y, int line2X) {
+            this.resourceUri = resourceUri;
+            this.driverStartX = driverStartX;
+            this.driverStartY = driverStartY;
+            this.line1X = line1X;
+            this.line1Y = qualifiedLine1Y;
+            this.line2X = line2X;
+        }
+    }
+
     public static void main(String args[]) throws IOException {
-        ImageDriversFactory.create("planning/busdriver/screenshot0.jpg", LinesFactory.createLines());
+        ImageProperties p1 = new ImageProperties("planning/busdriver/shiftsg.jpg", 413, 250, 330, 270, 352);
+        p1.optimal = 159;
+        ImageProperties p2 = new ImageProperties("planning/busdriver/shifts3.png", 408, 242, 331, 242, 352);
+        p2.optimal = 161;
+        List<Driver> drivers = ImageDriversFactory.create(p2, LinesFactory.createLines());
+        for (Driver driver : drivers) {
+            System.out.println(driver);
+        }
     }
 }
 
@@ -181,8 +203,8 @@ class RGB {
         this.blue = blue;
     }
 
-    public int sum() {
-        return red + green + blue;
+    public int diff(RGB rgb) {
+        return Math.abs(rgb.red - red) + Math.abs(rgb.green - green) + Math.abs(rgb.blue - blue);
     }
 
     @Override
@@ -194,3 +216,4 @@ class RGB {
                 '}';
     }
 }
+

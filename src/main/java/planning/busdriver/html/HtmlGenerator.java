@@ -5,6 +5,7 @@ import planning.busdriver.Line;
 import planning.busdriver.Shift;
 import planning.busdriver.factory.DaysFactory;
 import planning.busdriver.factory.DriversFactory;
+import planning.busdriver.factory.ImageDriversFactory;
 import planning.busdriver.factory.LinesFactory;
 
 import java.io.File;
@@ -28,7 +29,11 @@ public class HtmlGenerator {
         new File(targetFolder).mkdirs();
         writer = new PrintWriter(new File(targetFolder, "puzzle.html"));
         lines = LinesFactory.createLines();
-        drivers = DriversFactory.create("planning/busdriver/shifts1.txt", lines);
+        List<Line> lines = LinesFactory.createLines();
+        ImageDriversFactory.ImageProperties p1 = new ImageDriversFactory.ImageProperties(
+                "planning/busdriver/shiftsg.jpg", 413, 250, 330, 270, 352);
+        drivers = ImageDriversFactory.create(p1, lines);
+//        drivers = DriversFactory.create("planning/busdriver/shifts1.txt", lines);
         days = DaysFactory.createDays(14);
     }
 
@@ -74,16 +79,16 @@ public class HtmlGenerator {
             for (int j = 0; j < days.size(); j++) {
                 int day = days.get(j);
                 writer.printf("<td id='%s_d%s_m' class='%s' data-driver='%s' data-day='%s' data-qualified='%s'></td>" +
-                              "<td id='%s_d%s_l' class='%s' data-driver='%s' data-day='%s' data-qualified='%s'></td>",
-                              driver.getId(), day, getStyleClass(driver, day, Shift.MORNING), driver.getId(), day, qualifiedLines,
-                              driver.getId(), day, getStyleClass(driver, day, Shift.LATE), driver.getId(), day, qualifiedLines);
+                                "<td id='%s_d%s_l' class='%s' data-driver='%s' data-day='%s' data-qualified='%s'></td>",
+                        driver.getId(), day, getStyleClass(driver, day, Shift.MORNING), driver.getId(), day, qualifiedLines,
+                        driver.getId(), day, getStyleClass(driver, day, Shift.LATE), driver.getId(), day, qualifiedLines);
             }
             writer.println("</tr>");
         }
     }
 
     private String toSimplifiedLines(Set<Line> lines) {
-        return lines.toString().replaceAll("Line ","");
+        return lines.toString().replaceAll("Line ", "");
     }
 
     private String getStyleClass(Driver driver, int day, Shift shift) {

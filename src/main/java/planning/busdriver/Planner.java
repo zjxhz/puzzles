@@ -1,7 +1,7 @@
 package planning.busdriver;
 
 import planning.busdriver.exception.MissionImpossibleException;
-import planning.busdriver.factory.DriversFactory;
+import planning.busdriver.factory.ImageDriversFactory;
 import planning.busdriver.factory.LinesFactory;
 import planning.busdriver.scorer.*;
 
@@ -24,12 +24,13 @@ public class Planner {
     private static int MAX_PLAN_STEPS = 2000000;
     private static int MAX_REPLAN_STEPS = 500000;
     private static int REPLAN_MAX_GAP = 4;
+    private Plan bestPlan;
 
-    public Planner(String resource){
-        init(resource);
+    public Planner(Plan initialPlan){
+        init(initialPlan);
     }
 
-    public int plan(int highest) {
+    public Plan plan(int highest) {
         int totalAttempts = 0;
         highestScorePerPlan = Integer.MIN_VALUE;
         highestScore = highest;
@@ -38,7 +39,7 @@ public class Planner {
                 for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {
                     if(++totalAttempts > MAX_PLAN_STEPS){
                         System.out.println("Too many attempts before getting a possible solution, try another one...");
-                        return -1;
+                        return null;
                     };
 
                     Line line = lines.get(lineIndex);
@@ -64,14 +65,10 @@ public class Planner {
                             int from = (int) (14 * Math.random());//1 - 13
                             int to = from + 1 + (int) (Math.random() * REPLAN_MAX_GAP); // gap is 1-4
                             to = to > 14 ? 14 : to;
-//                            System.out.printf("%s->%s ", from, to);
-//                            if(replanAttempts % 10 == 0){
-//                                System.out.println("Replan attempts: " + replanAttempts);
-//                            }
                             replan(from, to);
                             if(replanAttempts++ > MAX_REPLAN_ATTEMPTS){
                                 System.out.println("Highest Score this round: " + highestScorePerPlan);
-                                return highestScore;
+                                return bestPlan;
                             }
 
                         }
@@ -80,7 +77,7 @@ public class Planner {
                 }
             }
         }
-        return highestScore;
+        return bestPlan;
     }
 
 
@@ -211,8 +208,7 @@ public class Planner {
         if (score > highestScore) {
             duplicateLinesAndDrivers();
             highestScore = score;
-            System.out.println("Higher Score found: " + highestScore);
-            printPlan();
+            System.out.print(highestScore + " ");
         }
         if(score > highestScorePerPlan){
             highestScorePerPlan = score;
@@ -228,6 +224,7 @@ public class Planner {
         for(Line line : lines){
             storedLines.add(line.duplicate(storedDrivers));
         }
+        bestPlan = new Plan(storedLines, storedDrivers,  getScore());
     }
 
     private int getScore() {
@@ -242,9 +239,9 @@ public class Planner {
 
 
 
-    private void init(String resource) {
-        lines = LinesFactory.createLines();
-        drivers = DriversFactory.create(resource, lines);
+    private void init(Plan initialPlan) {
+        lines = initialPlan.getLines();
+        drivers = initialPlan.getDrivers();
         scorer = new TotalScorer();
         scorer.addScorer(new ShiftPreferenceScorer());
         scorer.addScorer(new OffDaysPreferenceScorer());
@@ -253,25 +250,6 @@ public class Planner {
         scorer.addScorer(new EarlyAfterLateShiftsScorer());
         scorer.addScorer(new ConsecutiveLateShiftScorer());
         scorer.addScorer(new DeviatedTargetLateShiftsScorer());
-    }
-
-    private void printPlan() {
-        System.out.printf("%-8s", " ");//-8 to align
-        for (int i = 1; i <= 14; i++) {
-            System.out.print("Day " + i + "\t");
-        }
-        System.out.println();
-
-        for (Line line : lines) {
-            System.out.printf("%-8s", line);//-8 to align
-            for (int i = 1; i <= 14; i++) {
-                Driver morningDriver = line.getMorningShift(i);
-                Driver lateDriver = line.getLateShift(i);
-                System.out.printf((morningDriver == null ? "?" : morningDriver.getId()) + " | " + (lateDriver == null ? "?" : lateDriver.getId()) + "\t");
-            }
-            System.out.println();
-        }
-        System.out.println();
     }
 
     private Driver selectRandomDriver(Line line, int day, Shift shift, List<Driver> drivers) {
