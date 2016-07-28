@@ -16,3 +16,7 @@ This project uses Gradle. To play with it, follow the steps below:
 Since there are many differet ways to assign drivers to a single shift, brute forcing all posibilities is not practical, if possible at all. Also, simply making best moves for the current shift, without taking the overral planning into consideration, does not produce the optimal result.
 
 Inspired by the genetic algorithm, this application generates randomly a group of possible plans, which avoid violating major rules such as assigning shifts on off days, as the first generation. The _crossover_ is done in a way by re-planning(optimizing) assignments on ramdom day ranges for a given candidate(plan). Since optimizing each candidate are disjoined events, this algorithm can generate a "good enough" solution that reachs the 85% goal usually in seconds. Also, it has been observed that it is possible to reach the optimal target(100%), usually in a few minutes.
+
+### Robot player
+
+The robot player reads data from a generated plan, simulates mouse move and clicks on predefined positions. Being offerred with different position data, it can play with the online challenge mentioned earlier, or the official quintiq challenge. The delay of each click, however, needs to be increased when playing with the official version as it takes some time for the official application to respond.
