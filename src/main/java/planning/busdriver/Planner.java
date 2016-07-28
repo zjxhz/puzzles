@@ -30,10 +30,14 @@ public class Planner {
         init(initialPlan);
     }
 
-    public Plan plan(int highest) {
+    /**
+     * Plan towards the optimal target
+     * @param optimal Optimal target //todo not implemented yet
+     * @return Plan with shifts of lines assigned to drivers
+     */
+    public Plan plan(int optimal) {
         int totalAttempts = 0;
         highestScorePerPlan = Integer.MIN_VALUE;
-        highestScore = highest;
         for (int day = 1; day <= 14; day++) {
             for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
                 for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {

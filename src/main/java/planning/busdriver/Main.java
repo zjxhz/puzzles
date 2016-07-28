@@ -8,14 +8,17 @@ public class Main {
         final int maxAttempts = 50;
         int attempts = 0;
         Plan initialPlan = createInitialPlan();
-        System.out.println(initialPlan.getDrivers());
+        System.out.println("Drivers decoded from the screenshot file: ");
+        for(Driver driver : initialPlan.getDrivers()){
+            System.out.println(driver);
+        }
         Plan bestPlan;
         int highest = Integer.MIN_VALUE;
-        while (attempts++ < maxAttempts){
+        while (attempts++ < maxAttempts) {
             initialPlan = createInitialPlan();
             System.out.println("planRound: " + attempts);
-            Plan plan = new Planner(initialPlan).plan(-1);
-            if(plan != null && plan.getScore() > highest){
+            Plan plan = new Planner(initialPlan).plan(-1);//todo pass the optimal
+            if (plan != null && plan.getScore() > highest) {
                 highest = plan.getScore();
                 bestPlan = plan;
                 bestPlan.print();
@@ -25,10 +28,9 @@ public class Main {
     }
 
     private static Plan createInitialPlan() {
-        ImageDriversFactory.ImageProperties properties = new ImageDriversFactory.ImageProperties(
-                "planning/busdriver/shifts3.png", 408, 242, 331, 242, 352);//driverStartX, driverStartY, line1X, qualifiedLine1Y, line2X
-//        ImageDriversFactory.ImageProperties properties = new ImageDriversFactory.ImageProperties(
-//                "planning/busdriver/shiftsg.jpg", 413, 250, 330, 270, 352);
+        ImageDriversFactory.ImageProperties properties = ImageDriversFactory.ImageProperties.createStandardProperties(
+                "planning/busdriver/shifts3.png");
+
         return PlanFactory.createPlanFromImage(properties);
 
     }

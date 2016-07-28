@@ -2,11 +2,9 @@ package planning.busdriver.html;
 
 import planning.busdriver.Driver;
 import planning.busdriver.Line;
+import planning.busdriver.Plan;
 import planning.busdriver.Shift;
-import planning.busdriver.factory.DaysFactory;
-import planning.busdriver.factory.DriversFactory;
-import planning.busdriver.factory.ImageDriversFactory;
-import planning.busdriver.factory.LinesFactory;
+import planning.busdriver.factory.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -28,12 +26,11 @@ public class HtmlGenerator {
         String targetFolder = "build/resources/main/planning/busdriver/html";
         new File(targetFolder).mkdirs();
         writer = new PrintWriter(new File(targetFolder, "puzzle.html"));
-        lines = LinesFactory.createLines();
-        List<Line> lines = LinesFactory.createLines();
-        ImageDriversFactory.ImageProperties p1 = new ImageDriversFactory.ImageProperties(
-                "planning/busdriver/shiftsg.jpg", 413, 250, 330, 270, 352);
-        drivers = ImageDriversFactory.create(p1, lines);
-//        drivers = DriversFactory.create("planning/busdriver/shifts1.txt", lines);
+        ImageDriversFactory.ImageProperties properties = ImageDriversFactory.ImageProperties.createStandardProperties(
+                "planning/busdriver/shifts3.png");
+        Plan initPlan = PlanFactory.createPlanFromImage(properties);
+        drivers = initPlan.getDrivers();
+        lines = initPlan.getLines();
         days = DaysFactory.createDays(14);
     }
 

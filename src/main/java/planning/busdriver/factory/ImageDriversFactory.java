@@ -32,7 +32,7 @@ public class ImageDriversFactory {
         BufferedImage image = null;
         try {
             image = ImageIO.read(ClassLoader.getSystemResourceAsStream(properties.resourceUri));
-            System.out.println("Qualified lines:");
+//            System.out.println("Qualified lines:");
             for (int y = 0; y < 11; y++) {
                 Set<Line> qualifiedLines = new HashSet<>();
                 Set<Integer> offDays = new HashSet<>();
@@ -178,14 +178,24 @@ public class ImageDriversFactory {
             this.line1Y = qualifiedLine1Y;
             this.line2X = line2X;
         }
+
+        /**
+         * Creates an instance with standard properties, which I have tested on a 1920x1080 resolution. The coordinates
+         * can be set to 413, 250, 330, 270, 352 if the screenshot has assigned shifts, but it is not fully tested. Check
+         * the resource file "planning/busdriver/shiftsg.jpg" for reference.
+         *
+         * @param resource Screenshot path
+         * @return ImageProperties
+         */
+        public static ImageProperties createStandardProperties(String resource) {
+            return new ImageProperties(resource, 408, 242, 331, 242, 352);
+        }
     }
 
     public static void main(String args[]) throws IOException {
-        ImageProperties p1 = new ImageProperties("planning/busdriver/shiftsg.jpg", 413, 250, 330, 270, 352);
-        p1.optimal = 159;
-        ImageProperties p2 = new ImageProperties("planning/busdriver/shifts3.png", 408, 242, 331, 242, 352);
-        p2.optimal = 161;
-        List<Driver> drivers = ImageDriversFactory.create(p2, LinesFactory.createLines());
+        ImageProperties properties = new ImageProperties("planning/busdriver/shifts3.png", 408, 242, 331, 242, 352);
+//        properties.optimal = 161;
+        List<Driver> drivers = ImageDriversFactory.create(properties, LinesFactory.createLines());
         for (Driver driver : drivers) {
             System.out.println(driver);
         }
