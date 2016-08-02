@@ -8,7 +8,7 @@ import planning.busdriver.scorer.*;
 import java.util.*;
 
 /**
- * Created by wayne on 7/23/16.
+ * Planner creates plans by assigning shifts to the drivers.
  */
 public class Planner {
     private Stack<Stack<Assignment>> candidates = new Stack<>();
@@ -26,12 +26,18 @@ public class Planner {
     private static int REPLAN_MAX_GAP = 4;
     private Plan bestPlan;
 
-    public Planner(Plan initialPlan){
+    /**
+     * Constructs a planner with an initial plan.
+     *
+     * @param initialPlan Plan with information about drivers, lines without any shifts assigned.
+     */
+    public Planner(Plan initialPlan) {
         init(initialPlan);
     }
 
     /**
      * Plan towards the optimal target
+     *
      * @param optimal Optimal target //todo not implemented yet
      * @return Plan with shifts of lines assigned to drivers
      */
@@ -41,10 +47,10 @@ public class Planner {
         for (int day = 1; day <= 14; day++) {
             for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
                 for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {
-                    if(++totalAttempts > MAX_PLAN_STEPS){
+                    if (++totalAttempts > MAX_PLAN_STEPS) {
                         System.out.println("Too many attempts before getting a possible solution, try another one...");
                         return null;
-                    };
+                    }
 
                     Line line = lines.get(lineIndex);
                     Shift shift = Shift.values()[shiftIndex];
@@ -66,11 +72,11 @@ public class Planner {
                         printScore();
                         int replanAttempts = 0;
                         while (true) {
-                            int from = (int) (14 * Math.random());//1 - 13
-                            int to = from + 1 + (int) (Math.random() * REPLAN_MAX_GAP); // gap is 1-4
+                            int from = (int) (14 * Math.random());//1 to 13
+                            int to = from + 1 + (int) (Math.random() * REPLAN_MAX_GAP); // gap is 1 to 4
                             to = to > 14 ? 14 : to;
                             replan(from, to);
-                            if(replanAttempts++ > MAX_REPLAN_ATTEMPTS){
+                            if (replanAttempts++ > MAX_REPLAN_ATTEMPTS) {
                                 System.out.println("Highest Score this round: " + highestScorePerPlan);
                                 return bestPlan;
                             }
@@ -93,10 +99,11 @@ public class Planner {
         for (int day = from; day <= to; day++) {
             for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
                 for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {
-                    if(++totalAttempts > MAX_REPLAN_STEPS){
+                    if (++totalAttempts > MAX_REPLAN_STEPS) {
                         System.out.println("Too many REPLAN attempts before getting a possible solution, try another one...");
                         return;
-                    };
+                    }
+                    ;
                     Line line = lines.get(lineIndex);
                     Shift shift = Shift.values()[shiftIndex];
                     Driver driver;
@@ -214,7 +221,7 @@ public class Planner {
             highestScore = score;
             System.out.print(highestScore + " ");
         }
-        if(score > highestScorePerPlan){
+        if (score > highestScorePerPlan) {
             highestScorePerPlan = score;
         }
     }
@@ -222,13 +229,13 @@ public class Planner {
     private void duplicateLinesAndDrivers() {
         storedLines = new ArrayList<>();
         storedDrivers = new ArrayList<>();
-        for(Driver driver : drivers){
+        for (Driver driver : drivers) {
             storedDrivers.add(driver.duplicate());
         }
-        for(Line line : lines){
+        for (Line line : lines) {
             storedLines.add(line.duplicate(storedDrivers));
         }
-        bestPlan = new Plan(storedLines, storedDrivers,  getScore());
+        bestPlan = new Plan(storedLines, storedDrivers, getScore());
     }
 
     private int getScore() {
@@ -239,8 +246,6 @@ public class Planner {
         driverSet.addAll(drivers);
         return scorer.evaluate(lineSet, days, driverSet);
     }
-
-
 
 
     private void init(Plan initialPlan) {

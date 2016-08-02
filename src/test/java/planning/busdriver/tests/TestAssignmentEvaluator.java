@@ -31,11 +31,11 @@ public class TestAssignmentEvaluator {
 
     @Test
     public void respectOffDaysPreference() {
-        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.WHATEVER, driverA));
+        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.MORNING, driverA));
         Set<Integer> preferredOffDays = new HashSet<>();
         preferredOffDays.add(1);
         driverA.setPreferredOffDays(preferredOffDays);
-        assertEquals(-3, AssignmentEvaluator.evaluate(line1, 1, Shift.WHATEVER, driverA));
+        assertEquals(-3, AssignmentEvaluator.evaluate(line1, 1, Shift.MORNING, driverA));
     }
 
     @Test
@@ -50,7 +50,7 @@ public class TestAssignmentEvaluator {
     //the more late shifts one has, the less he should be asggined late shifts.
     @Test
     public void tooManyLateShift() {
-        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.WHATEVER, driverA));
+        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.MORNING, driverA));
         line1.assignLateShift(1, driverA);
         line1.assignLateShift(3, driverA);
         line1.assignLateShift(5, driverA);
@@ -60,26 +60,23 @@ public class TestAssignmentEvaluator {
 
     @Test
     public void lateShiftFollowedImmediatelyByEarlyShift() {
-        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.WHATEVER, driverA));
+        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.MORNING, driverA));
         line1.assignLateShift(1, driverA);
         assertEquals(AssignmentEvaluator.ILLEGAL_ASSIGNMENT_VALUE, AssignmentEvaluator.evaluate(line1, 2, Shift.MORNING, driverA));
     }
 
     @Test
     public void consecutiveLateShifts() {
-        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.WHATEVER, driverA));
+        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.MORNING, driverA));
         line1.assignLateShift(1, driverA);
         line1.assignLateShift(2, driverA);
         line1.assignLateShift(3, driverA);
         assertEquals(AssignmentEvaluator.ILLEGAL_ASSIGNMENT_VALUE, AssignmentEvaluator.evaluate(line1, 4, Shift.LATE, driverA));
-//        line1.assignLateShift(4, driverA);
-        //20+8. 5 consecutive late shifts
-//        assertEquals(-28, AssignmentEvaluator.evaluate(line1, 5, Shift.LATE, driverA));
     }
 
     @Test
     public void rewardLongRest() {
-        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.WHATEVER, driverA));
+        assertEquals(0, AssignmentEvaluator.evaluate(line1, 1, Shift.MORNING, driverA));
         line1.assignLateShift(1, driverA);
         assertEquals(0, AssignmentEvaluator.evaluate(line1, 3, Shift.LATE, driverA));
         assertEquals(-5, AssignmentEvaluator.evaluate(line1, 4, Shift.LATE, driverA));
@@ -89,14 +86,14 @@ public class TestAssignmentEvaluator {
     public void illegalAssignment() {
         Line line2 = new Line("2");
         assertEquals("Assigning an unqualified driver is a bad idea",
-                AssignmentEvaluator.ILLEGAL_ASSIGNMENT_VALUE, AssignmentEvaluator.evaluate(line2, 1, Shift.WHATEVER, driverA));
+                AssignmentEvaluator.ILLEGAL_ASSIGNMENT_VALUE, AssignmentEvaluator.evaluate(line2, 1, Shift.MORNING, driverA));
         Set<Integer> offDays = new HashSet<>();
 
 
         offDays.add(1);
         Driver driverB = new Driver("B", lineSet, offDays);
         assertEquals("Assigning on off days is not a good plan.",
-                AssignmentEvaluator.ILLEGAL_ASSIGNMENT_VALUE, AssignmentEvaluator.evaluate(line1, 1, Shift.WHATEVER, driverB));
+                AssignmentEvaluator.ILLEGAL_ASSIGNMENT_VALUE, AssignmentEvaluator.evaluate(line1, 1, Shift.MORNING, driverB));
 
 
         driverA.assignMorningShift(line1, 1);
