@@ -1,8 +1,6 @@
 package planning.busdriver;
 
 import planning.busdriver.exception.MissionImpossibleException;
-import planning.busdriver.factory.ImageDriversFactory;
-import planning.busdriver.factory.LinesFactory;
 import planning.busdriver.scorer.*;
 
 import java.util.*;
@@ -18,11 +16,9 @@ public class Planner {
     private List<Line> storedLines;
     private List<Driver> storedDrivers;
     private int highestScore = Integer.MIN_VALUE;
-    private int highestScorePerPlan;
     private TotalScorer scorer;
-    private static int MAX_REPLAN_ATTEMPTS = 100;
-    private static int MAX_PLAN_STEPS = 2000000;
-    private static int MAX_REPLAN_STEPS = 500000;
+    private static int MAX_OPTIMIZING_ATTEMPTS = 100;
+    private static int MAX_ATTEMPTS = 2000000; //avoid trying too many steps to generate a plan
     private static int REPLAN_MAX_GAP = 4;
     private Plan bestPlan;
 
@@ -42,107 +38,112 @@ public class Planner {
      * @return Plan with shifts of lines assigned to drivers
      */
     public Plan plan(int optimal) {
-        int totalAttempts = 0;
-        highestScorePerPlan = Integer.MIN_VALUE;
-        for (int day = 1; day <= 14; day++) {
-            for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
-                for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {
-                    if (++totalAttempts > MAX_PLAN_STEPS) {
-                        System.out.println("Too many attempts before getting a possible solution, try another one...");
-                        return null;
-                    }
-
-                    Line line = lines.get(lineIndex);
-                    Shift shift = Shift.values()[shiftIndex];
-                    Driver driver;
-                    if ((driver = selectRandomDriver(line, day, shift, drivers)) == null) {
-                        lastAssignment = findLastAssignment();
-                        if (lastAssignment == null) {
-                            throw new MissionImpossibleException();
-                        }
-                        cancelAfter(lastAssignment, 14);
-                        lastAssignment.assign();
-                        shiftIndex = lastAssignment.shift.ordinal();
-                        lineIndex = lines.indexOf(lastAssignment.line);
-                        day = lastAssignment.day;
-                    } else {
-                        line.assignShift(day, shift, driver);
-                    }
-                    if (day == 14 && lineIndex == lines.size() - 1 && shiftIndex == 1) {
-                        printScore();
-                        int replanAttempts = 0;
-                        while (true) {
-                            int from = (int) (14 * Math.random());//1 to 13
-                            int to = from + 1 + (int) (Math.random() * REPLAN_MAX_GAP); // gap is 1 to 4
-                            to = to > 14 ? 14 : to;
-                            replan(from, to);
-                            if (replanAttempts++ > MAX_REPLAN_ATTEMPTS) {
-                                System.out.println("Highest Score this round: " + highestScorePerPlan);
-                                return bestPlan;
-                            }
-
-                        }
-                    }
-
-                }
-            }
+        createFirstPlan();
+        int attempts = 0;
+        Random random = new Random();
+        while (attempts++ < MAX_OPTIMIZING_ATTEMPTS) {
+            int from = random.nextInt(13) + 1;
+            int to = from + 1 + random.nextInt(REPLAN_MAX_GAP);
+            to = to > 14 ? 14 : to;
+            optimise(from, to);
         }
         return bestPlan;
     }
 
-
-    private void replan(int from, int to) {
-        candidates = new Stack<>();
-        duplicateLinesAndDrivers();
-        cancelAfter(from, to);
-        int totalAttempts = 0;
-        for (int day = from; day <= to; day++) {
-            for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
-                for (int shiftIndex = 0; shiftIndex < 2; shiftIndex++) {
-                    if (++totalAttempts > MAX_REPLAN_STEPS) {
-                        System.out.println("Too many REPLAN attempts before getting a possible solution, try another one...");
-                        return;
-                    }
-                    ;
-                    Line line = lines.get(lineIndex);
-                    Shift shift = Shift.values()[shiftIndex];
-                    Driver driver;
-                    if ((driver = selectBestDriver(line, day, shift, drivers)) == null) {
-                        lastAssignment = findLastAssignment();
-                        if (lastAssignment == null) {
-                            restoreLinesAndDrivers();
-                            return;
-                        }
-                        cancelAfter(lastAssignment, to);
-                        lastAssignment.assign();
-                        shiftIndex = lastAssignment.shift.ordinal();
-                        lineIndex = lines.indexOf(lastAssignment.line);
-                        day = lastAssignment.day;
-                    } else {
-                        line.assignShift(day, shift, driver);
-                    }
-                    if (day == to && lineIndex == lines.size() - 1 && shiftIndex == 1) {
-                        printScore();
-                        candidates.pop();
-                        lastAssignment = findLastAssignment();
-                        if (lastAssignment == null) {
-                            restoreLinesAndDrivers();
-                            return;
-                        }
-                        cancelAfter(lastAssignment, to);
-                        lastAssignment.assign();
-                        shiftIndex = lastAssignment.shift.ordinal();
-                        lineIndex = lines.indexOf(lastAssignment.line);
-                        day = lastAssignment.day;
-                    }
-                }
-            }
-
-        }
-        assert false;
+    /**
+     * Creates the first plan to be optimized later.
+     */
+    private void createFirstPlan(){
+        Assignment first = firstAssignmentOnDay(1);
+        plan(first, 14, false);
     }
 
-    private void restoreLinesAndDrivers() {
+    /**
+     * Plan on a given day range. Argument restore indicates when the old plan needs to be restored when planning
+     * is impossible to proceed.
+     *
+     * @Param fromAssignment Start from the assignment which has day, line and shift
+     * @Param toDay To this day.
+     * @Param restore Stores the plan when it is impossible to proceed if true, or throw an MissionImpossibleException
+     */
+    private void plan(Assignment fromAssignment, int toDay, boolean restore) {
+        int totalAttempts = 0;
+        Assignment assignment = fromAssignment;
+        do{
+            Driver driver = selectDriver(assignment);
+            if(driver != null){
+                assignment.driver = driver;
+                assignment.assign();
+            } else {
+                lastAssignment = findLastAssignment();
+                if (lastAssignment == null) {
+                    if (restore) {
+                        restorePlan();
+                        return;
+                    } else {
+                        throw new MissionImpossibleException();
+                    }
+
+                }
+                cancelAfter(lastAssignment, toDay);
+                lastAssignment.assign();
+            }
+            assignment = lastAssignment;
+            if (++totalAttempts > MAX_ATTEMPTS) {
+                System.out.println("Too many attempts before getting a possible solution");
+                return;
+            }
+        } while((assignment = nextAssignment(assignment, toDay)) != null);
+    }
+
+    private Driver selectDriver(Assignment assignment) {
+        Stack<Assignment> validOnes = findValidAssignments(assignment);
+        if (validOnes.isEmpty()) {
+            return null;
+        }
+        lastAssignment = validOnes.remove(new Random().nextInt(validOnes.size()));
+        candidates.add(validOnes);
+        return lastAssignment.driver;
+    }
+
+    private Stack<Assignment> findValidAssignments(Assignment assignment) {
+        return findValidAssignments(assignment.line, assignment.day, assignment.shift, drivers);
+    }
+
+    /**
+     * Optimizing the plan by brute forcing all possibilities on a given day range
+     *
+     * @param from From day.
+     * @param to   To day.
+     */
+    private void optimise(int from, int to) {
+        candidates = new Stack<>();
+        storePlan();
+        cancelAfter(from, to);
+
+        Assignment assignment = firstAssignmentOnDay(from);
+        while (assignment != null) {
+            plan(assignment, to, true);
+            storeAndPrintBestPlan();
+            if(!candidates.isEmpty()){
+                candidates.pop();
+            }
+            lastAssignment = findLastAssignment();
+            if (lastAssignment == null) {
+                restorePlan();
+                return;
+            }
+            cancelAfter(lastAssignment, to);
+            lastAssignment.assign();
+            assignment = nextAssignment(lastAssignment);
+        }
+    }
+
+    private Assignment firstAssignmentOnDay(int from) {
+        return new Assignment(lines.get(0), from, Shift.MORNING, null);
+    }
+
+    private void restorePlan() {
         lines = storedLines;
         drivers = storedDrivers;
     }
@@ -154,6 +155,40 @@ public class Planner {
             return lastCandidates.pop();
         }
         return null;
+    }
+
+    private Assignment nextAssignment(Assignment assignment) {
+        Assignment next = new Assignment();
+        int lineIndex = lines.indexOf(assignment.line);
+        if (assignment.shift == Shift.MORNING) {
+            next.day = assignment.day;
+            next.line = assignment.line;
+            next.shift = Shift.LATE;
+        } else if (lineIndex < 2) {
+            next.day = assignment.day;
+            next.line = lines.get(lineIndex + 1);
+            next.shift = Shift.MORNING;
+        } else {
+            next.day = assignment.day + 1;
+            next.line = lines.get(0);
+            next.shift = Shift.MORNING;
+        }
+        return next;
+    }
+
+    /**
+     * Returns next assignment of the given assignment, or null if it is after the given day
+     *
+     * @param assignment Assignment
+     * @param day        No late than this day
+     * @return Next assignment of the given assignment, or null if it is after the given day
+     */
+    private Assignment nextAssignment(Assignment assignment, int day) {
+        Assignment next = nextAssignment(assignment);
+        if(next.day > day){
+            return null;
+        }
+        return next;
     }
 
     private void cancelAfter(int fromDay, int toDay) {
@@ -214,19 +249,16 @@ public class Planner {
         return days;
     }
 
-    private void printScore() {
+    private void storeAndPrintBestPlan() {
         int score = getScore();
         if (score > highestScore) {
-            duplicateLinesAndDrivers();
+            storePlan();
             highestScore = score;
             System.out.print(highestScore + " ");
         }
-        if (score > highestScorePerPlan) {
-            highestScorePerPlan = score;
-        }
     }
 
-    private void duplicateLinesAndDrivers() {
+    private void storePlan() {
         storedLines = new ArrayList<>();
         storedDrivers = new ArrayList<>();
         for (Driver driver : drivers) {
@@ -261,23 +293,12 @@ public class Planner {
         scorer.addScorer(new DeviatedTargetLateShiftsScorer());
     }
 
-    private Driver selectRandomDriver(Line line, int day, Shift shift, List<Driver> drivers) {
+    private Driver selectDriver(Line line, int day, Shift shift, List<Driver> drivers) {
         Stack<Assignment> validOnes = findValidAssignments(line, day, shift, drivers);
         if (validOnes.isEmpty()) {
             return null;
         }
         lastAssignment = validOnes.remove(new Random().nextInt(validOnes.size()));
-        candidates.add(validOnes);
-        return lastAssignment.driver;
-    }
-
-    private Driver selectBestDriver(Line line, int day, Shift shift, List<Driver> drivers) {
-        Stack<Assignment> validOnes = findValidAssignments(line, day, shift, drivers);
-        if (validOnes.isEmpty()) {
-            return null;
-        }
-        Collections.sort(validOnes, new AssignmentEvaluator());
-        lastAssignment = validOnes.pop();
         candidates.add(validOnes);
         return lastAssignment.driver;
     }

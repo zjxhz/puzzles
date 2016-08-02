@@ -29,7 +29,7 @@ public class Main {
 
     private static Plan createInitialPlan() {
         ImageDriversFactory.ImageProperties properties = ImageDriversFactory.ImageProperties.createStandardProperties(
-                "planning/busdriver/shifts3.png");
+                "planning/busdriver/shifts3.png");//optimal = 154
 
         return PlanFactory.createPlanFromImage(properties);
 

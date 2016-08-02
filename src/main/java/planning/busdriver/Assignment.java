@@ -26,7 +26,7 @@ public class Assignment {
                 "line=" + line +
                 ", day=" + day +
                 ", shift=" + shift +
-                ", driver=" + driver.getId() +
+                ", driver=" + (driver == null ? null : driver.getId()) +
                 ", value=" + value +
                 '}';
     }

@@ -30,7 +30,7 @@ public class Plan {
 
 
     public void print() {
-        System.out.printf("%-8s", " ");//-8 to align
+        System.out.printf("\n%-8s", " ");//-8 to align
         for (int i = 1; i <= 14; i++) {
             System.out.print("Day " + i + "\t");
         }
