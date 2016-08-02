@@ -1,4 +1,4 @@
-## Summary
+﻿## Summary
 
 This project contains puzzles for my personal interests. Currently it has only one puzzle: [bus driver planning](http://careers.quintiq.com/puzzle.html#the-challenge).
 
@@ -11,7 +11,9 @@ This project uses Gradle. To play with it, follow the steps below:
 5. to run the application: `gradle run`. The main class is `planning.busdriver.Main`, as specified in `build.gradle`. This application reads data from a screenshot file `planning/busdriver/shifts3.png` as input, and tries to find a highest score by optimizing a group of randomly generated plans. Check the console output to see the result, it should be self-explanatory.
 6. To play it online, visit: http://xuhuanze.me/puzzle/
 
-## How it works
+## Bus-driver planning
+
+### How it works
 
 Since there are many differet ways to assign drivers to a single shift, brute forcing all posibilities is not practical, if possible at all. Also, simply making best moves for the current shift, without taking the overral planning into consideration, does not produce the optimal result.
 
