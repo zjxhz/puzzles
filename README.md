@@ -1,6 +1,6 @@
 ﻿## Summary
 
-This project contains puzzles that interest me. Currently it has only one puzzle: [bus-driver-planning](http://careers.quintiq.com/puzzle.html#the-challenge).
+This project contains puzzles that interest me. Currently it has only one puzzle: [the bus-driver-planning challenge](http://careers.quintiq.com/puzzle.html#the-challenge).
 
 This project uses Gradle. To play with it, follow the steps below:
 
