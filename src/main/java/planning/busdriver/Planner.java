@@ -13,14 +13,14 @@ public class Planner {
     private Assignment lastAssignment = null;
     private List<Line> lines;
     private List<Driver> drivers;
-    private List<Line> storedLines;
-    private List<Driver> storedDrivers;
     private int highestScore = Integer.MIN_VALUE;
     private TotalScorer scorer;
+    private static int MAX_TOTAL_ATTEMPTS = 50;
     private static int MAX_OPTIMIZING_ATTEMPTS = 100;
-    private static int MAX_ATTEMPTS = 2000000; //avoid trying too many steps to generate a plan
-    private static int REPLAN_MAX_GAP = 4;
+    private static int MAX_ATTEMPTS_PER_PLANNING = 2000000; //avoid trying too many steps to generate a plan
+    private static int OPTIMIZING_GAP = 4;
     private Plan bestPlan;
+    private int target;
 
     /**
      * Constructs a planner with an initial plan.
@@ -32,46 +32,53 @@ public class Planner {
     }
 
     /**
-     * Plan towards the optimal target
+     * Plan towards the target.
      *
-     * @param optimal Optimal target //todo not implemented yet
+     * @param target Target score to achieve.
      * @return Plan with shifts of lines assigned to drivers
      */
-    public Plan plan(int optimal) {
+    private Plan plan(int target) {
+        this.target = target;
         createFirstPlan();
-        int attempts = 0;
-        Random random = new Random();
-        while (attempts++ < MAX_OPTIMIZING_ATTEMPTS) {
-            int from = random.nextInt(13) + 1;
-            int to = from + 1 + random.nextInt(REPLAN_MAX_GAP);
-            to = to > 14 ? 14 : to;
-            optimise(from, to);
-        }
+        optimize();
         return bestPlan;
+    }
+
+    private void optimize() {
+        int optimizingRound = 0;
+        Random random = new Random();
+        boolean targetReached = false;
+        while (optimizingRound++ < MAX_OPTIMIZING_ATTEMPTS && !targetReached) {
+            int from = random.nextInt(13) + 1;
+            int to = from + 1 + random.nextInt(OPTIMIZING_GAP);
+            to = to > 14 ? 14 : to;
+            targetReached = optimise(from, to);
+        }
     }
 
     /**
      * Creates the first plan to be optimized later.
      */
-    private void createFirstPlan(){
-        Assignment first = firstAssignmentOnDay(1);
-        plan(first, 14, false);
+    private void createFirstPlan() {
+        plan(firstAssignmentOnDay(1), 14, false);
+        storePlan();
     }
 
     /**
-     * Plan on a given day range. Argument restore indicates when the old plan needs to be restored when planning
-     * is impossible to proceed.
+     * Plan starting on a given assignment to a day. Argument restore indicates when the old plan needs to be restored
+     * when planning is impossible to proceed.
      *
      * @Param fromAssignment Start from the assignment which has day, line and shift
      * @Param toDay To this day.
-     * @Param restore Stores the plan when it is impossible to proceed if true, or throw an MissionImpossibleException
+     * @Param restore Restores from the best plan when it is impossible to proceed if true,
+     * or throw an MissionImpossibleException
      */
     private void plan(Assignment fromAssignment, int toDay, boolean restore) {
         int totalAttempts = 0;
         Assignment assignment = fromAssignment;
-        do{
+        do {
             Driver driver = selectDriver(assignment);
-            if(driver != null){
+            if (driver != null) {
                 assignment.driver = driver;
                 assignment.assign();
             } else {
@@ -89,11 +96,11 @@ public class Planner {
                 lastAssignment.assign();
             }
             assignment = lastAssignment;
-            if (++totalAttempts > MAX_ATTEMPTS) {
-                System.out.println("Too many attempts before getting a possible solution");
+            if (++totalAttempts > MAX_ATTEMPTS_PER_PLANNING) {
+                System.out.println("Interrupted because of too many attempts");
                 return;
             }
-        } while((assignment = nextAssignment(assignment, toDay)) != null);
+        } while ((assignment = nextAssignment(assignment, toDay)) != null);
     }
 
     private Driver selectDriver(Assignment assignment) {
@@ -114,9 +121,9 @@ public class Planner {
      * Optimizing the plan by brute forcing all possibilities on a given day range
      *
      * @param from From day.
-     * @param to   To day.
+     * @param to To day.
      */
-    private void optimise(int from, int to) {
+    private boolean optimise(int from, int to) {
         candidates = new Stack<>();
         storePlan();
         cancelAfter(from, to);
@@ -124,19 +131,23 @@ public class Planner {
         Assignment assignment = firstAssignmentOnDay(from);
         while (assignment != null) {
             plan(assignment, to, true);
-            storeAndPrintBestPlan();
-            if(!candidates.isEmpty()){
+            if(storeBetterPlan() >= target){
+                return true;
+            }
+
+            if (!candidates.isEmpty()) {
                 candidates.pop();
             }
             lastAssignment = findLastAssignment();
             if (lastAssignment == null) {
                 restorePlan();
-                return;
+                return false;
             }
             cancelAfter(lastAssignment, to);
             lastAssignment.assign();
             assignment = nextAssignment(lastAssignment);
         }
+        return false;
     }
 
     private Assignment firstAssignmentOnDay(int from) {
@@ -144,8 +155,8 @@ public class Planner {
     }
 
     private void restorePlan() {
-        lines = storedLines;
-        drivers = storedDrivers;
+        lines = bestPlan.getLines();
+        drivers = bestPlan.getDrivers();
     }
 
     private Assignment findLastAssignment() {
@@ -185,7 +196,7 @@ public class Planner {
      */
     private Assignment nextAssignment(Assignment assignment, int day) {
         Assignment next = nextAssignment(assignment);
-        if(next.day > day){
+        if (next.day > day) {
             return null;
         }
         return next;
@@ -249,25 +260,26 @@ public class Planner {
         return days;
     }
 
-    private void storeAndPrintBestPlan() {
+    private int storeBetterPlan() {
         int score = getScore();
         if (score > highestScore) {
             storePlan();
             highestScore = score;
             System.out.print(highestScore + " ");
         }
+        return score;
     }
 
     private void storePlan() {
-        storedLines = new ArrayList<>();
-        storedDrivers = new ArrayList<>();
+        List<Line> linesCopy = new ArrayList<>();
+        List<Driver> driversCopy = new ArrayList<>();
         for (Driver driver : drivers) {
-            storedDrivers.add(driver.duplicate());
+            driversCopy.add(driver.duplicate());
         }
         for (Line line : lines) {
-            storedLines.add(line.duplicate(storedDrivers));
+            linesCopy.add(line.duplicate(driversCopy));
         }
-        bestPlan = new Plan(storedLines, storedDrivers, getScore());
+        bestPlan = new Plan(linesCopy, driversCopy, getScore());
     }
 
     private int getScore() {
@@ -324,5 +336,25 @@ public class Planner {
             }
         }
         return validOnes;
+    }
+
+    public static Plan createPlan(Plan initialPlan, int target){
+        Plan bestPlan = null;
+        int attempts = 0;
+        int highestScore = Integer.MIN_VALUE;
+        while (attempts++ < MAX_TOTAL_ATTEMPTS) {
+            System.out.println("\nPlanning round : " + attempts);
+            Plan plan = new Planner(initialPlan.duplicate()).plan(target);
+            int score = plan.getScore();
+            if(score > highestScore){
+                highestScore = score;
+                bestPlan = plan;
+                bestPlan.print();
+            }
+            if (plan.getScore() >= target) {
+                break;
+            }
+        }
+        return bestPlan;
     }
 }

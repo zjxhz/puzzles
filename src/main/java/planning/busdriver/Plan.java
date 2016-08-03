@@ -1,5 +1,6 @@
 package planning.busdriver;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -46,5 +47,17 @@ public class Plan {
             System.out.println();
         }
         System.out.println();
+    }
+
+    public Plan duplicate(){
+        List<Line> linesCopy = new ArrayList<>();
+        List<Driver> driversCopy = new ArrayList<>();
+        for (Driver driver : drivers) {
+            driversCopy.add(driver.duplicate());
+        }
+        for (Line line : lines) {
+            linesCopy.add(line.duplicate(driversCopy));
+        }
+        return new Plan(linesCopy, driversCopy, getScore());
     }
 }

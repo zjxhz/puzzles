@@ -57,7 +57,7 @@ public class RobotPlayer {
                     int x = getLineX(lineIndex, day, shift);
                     int y = getLineY(lineIndex, day, shift);
                     click(x, y);
-                    nap(1500);
+                    nap(100);
                     Driver driver = line.getShift(day, shift);
                     int driverIndex = drivers.indexOf(driver);
                     int dx = getDriverX(driverIndex, day, shift);
@@ -138,22 +138,10 @@ public class RobotPlayer {
         Positions p = new Positions(170, 125, 26, 26, 195, 24);
         Positions p3 = new Positions(408, 138, 33, 30, 240, 37); //lineX, line Y, lineW, lineH, driverY, driverH
 
-        final int maxAttempts = 50;
-        int attempts = 0;
-        Plan bestPlan = null;
-        int highest = Integer.MIN_VALUE;
+
         Plan initialPlan = createInitialPlan();
         System.out.println(initialPlan);
-        while (attempts++ < maxAttempts){
-            System.out.println("planRound: " + attempts);
-            initialPlan = createInitialPlan();
-            Plan plan = new Planner(initialPlan).plan(-1);
-            if(plan != null && plan.getScore() > highest){
-                highest = plan.getScore();
-                bestPlan = plan;
-                bestPlan.print();
-            }
-        }
+        Plan bestPlan = Planner.createPlan(initialPlan, 131);
 
         new RobotPlayer(p, bestPlan.getDrivers(), bestPlan.getLines()).play();
     }
