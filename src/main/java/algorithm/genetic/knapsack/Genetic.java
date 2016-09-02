@@ -5,41 +5,29 @@ import java.util.*;
 /**
  * Created by huanze on 7/19/2016.
  */
-public class Main {
+public class Genetic {
     private int CHROME_LENGTH = 200;//20;
     private int GENE_LENGTH = 5;//todo this should be rather calculated
     private int POPULATION_SIZE = 100;
-    private int MAX_ROUNDS = 1000;
+    private int MAX_ROUNDS = 100;
     private float CROSSOVER_RATE = 0.7f;
-    private int bagCapacity;
-    private int optimalResult;
     private double MUTATION_RATE = 0.001;
     private List<BitSet> population = new ArrayList<>(POPULATION_SIZE);
     private double fittest = 0;
     private int round = 0;
+    private Knapsack knapsack;
 
-    public List<Item> items;
-
-    public Main() {
+    public Genetic() {
         initTestData("algorithm/genetic/knapsack/testcase1.txt");
     }
 
     private void initTestData(String resource) {
-        //line 1: capacity optimal; rest lines: weight value for each item
-        Scanner in = new Scanner(ClassLoader.getSystemResourceAsStream(resource));
-        bagCapacity = in.nextInt();
-        optimalResult = in.nextInt();
-        System.out.printf("Capacity: %s, Optimal: %s \n", bagCapacity, optimalResult);
-        items = new ArrayList<>(bagCapacity);
-        while(in.hasNextInt()){
-            int weight = in.nextInt();
-            int value = in.nextInt();
-            items.add(new Item(weight, value));
-        }
+        knapsack = KnapsackFactory.createKnapsack(resource);
+        System.out.printf("Capacity: %s, Optimal: %s \n", knapsack.getCapacity(), knapsack.getOptimal());
     }
 
     public static void main(String[] args) {
-        new Main().pack();
+        new Genetic().pack();
     }
 
     public void pack() {
@@ -105,12 +93,12 @@ public class Main {
     private float calcFitness(BitSet chrome) {
         int weight = calcWeight(chrome);
         int value = calcValue(chrome);
-        int denominator = weight <= bagCapacity ? 1 : (weight - 10);
+        int denominator = weight <= knapsack.getCapacity() ? 1 : (weight - knapsack.getCapacity() + 1);
         float fitness =  1.0f * value / denominator;
         if (fitness > fittest) {
             System.out.println("Fittest so far: " + fitness
-                    + ", weight: " + weight + ", value: " + value
-                    + ", round " + round);
+                    + ", weight: " + weight + ", value: " + value + ", ratio: " + value * 1.0 / knapsack.getOptimal()
+                    + " at round " + round);
             System.out.println("Items are: " + decode(chrome));
             fittest = fitness;
         }
@@ -151,7 +139,7 @@ public class Main {
         Set<Item> result = new HashSet<>();
         int weight = 0;
         for(Item item : items){
-            if(item.weight + weight > bagCapacity){
+            if(item.weight + weight > knapsack.getCapacity()){
                 break;
             }
             else{
@@ -173,19 +161,12 @@ public class Main {
     }
 
 
-//    yprivate void removeItemsIfWeightExceeds(List<Item> items) {
-//        int weight = 0;
-//        for(Item i : items){
-//            weight += i.weight;
-//        }
-//        if(weight)
-//    }
 
     private Item decode(int b) {
-        if (b >= items.size()) {
+        if (b >= knapsack.getItems().size()) {
             return null;
         }
-        return items.get(b);
+        return knapsack.getItems().get(b);
     }
 
     private void initPopulation() {
@@ -204,44 +185,3 @@ public class Main {
     }
 }
 
-class Item implements Comparable<Item> {
-    int weight;
-    int value;
-
-    public Item(int weight, int value) {
-        this.weight = weight;
-        this.value = value;
-    }
-
-    @Override
-    public int compareTo(Item o) {
-        return weight - o.weight;
-    }
-
-    @Override
-    public String toString() {
-        return "Item{" +
-                "weight=" + weight +
-                ", value=" + value +
-                '}';
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Item item = (Item) o;
-
-        if (weight != item.weight) return false;
-        return value == item.value;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = weight;
-        result = 31 * result + value;
-        return result;
-    }
-}
